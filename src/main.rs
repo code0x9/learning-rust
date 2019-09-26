@@ -1,43 +1,38 @@
-extern crate rand;
-
-use std::io;
-use rand::random;
-
-fn get_guess() -> u8 {
-    loop {
-        println!("Input guess:");
-        let mut guess = String::new();
-        io::stdin().read_line(&mut guess).expect("Could not read from stdin");
-
-        match guess.trim().parse::<u8>() {
-            Ok(v) => return v,
-            Err(e) => println!("Could not understand input: {}", e),
-        }
-    }
+#[derive(Copy, Clone)]
+enum State {
+    Normal,
+    Comment,
+    Upper,
+    Lower,
 }
 
-fn handle_guess(guess: u8, correct: u8) -> bool {
-    if guess < correct {
-        println!("Too low");
-        false
-    } else if guess > correct {
-        println!("Too high");
-        false
-    } else {
-        println!("You got it!");
-        true
+fn machine_cycle(state: State, c: char) -> (Option<char>, State) {
+    use self::State::*;
+    match (state, c) {
+        (Normal, '#') => (None, Comment),
+        (Normal, '^') => (None, Upper),
+        (Normal, '_') => (None, Lower),
+        (Normal, other) => (Some(other), Normal),
+        (Comment, '#') => (None, Normal),
+        (Comment, _) => (None, Comment),
+        (Upper, '^') => (None, Normal),
+        (Upper, other) => (Some(other.to_ascii_uppercase()), Upper),
+        (Lower, '_') => (None, Normal),
+        (Lower, other) => (Some(other.to_ascii_lowercase()), Lower),
     }
 }
 
 fn main() {
-    println!("Welcome to the guessing game!");
-    let correct = random::<u8>();
-//    println!("correct: {}", correct);
+    let src = "This _Is_ some ^input^. #we want this transformed without this comment#";
+    let mut result = String::new();
+    let mut state = State::Normal;
+    for c in src.chars() {
+        let (r, new_state) = machine_cycle(state, c);
 
-    loop {
-        let guess = get_guess();
-        if handle_guess(guess, correct) {
-            break;
+        if let Some(c) = r {
+            result.push(c);
         }
+        state = new_state;
     }
+    println!("{}", result);
 }
